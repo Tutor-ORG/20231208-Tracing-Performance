@@ -1,0 +1,50 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+exporters:
+  otlp:
+    endpoint: tempo:55680
+    tls:
+      insecure: true
+    # insecure: true
+service:
+  extensions: [pprof, zpages, health_check]  
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch, tail_sampling] # use tail_sampling    
+      exporters: [otlp]
+
+extensions:
+  health_check:
+  pprof:
+    endpoint: :1888
+  zpages:
+    endpoint: :55679
+
+processors:
+  batch:
+  # 概率采样器
+  probabilistic_sampler:
+    hash_seed: 22
+    sampling_percentage: 15.3
+  # 尾部采样器
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100
+    expected_new_traces_per_sec: 100
+    policies:
+      [
+        {
+          name: policy-1,
+          type: status_code,
+          status_code: {status_codes: [ERROR]}
+        },
+        {
+          name: policy-2,
+          type: probabilistic,
+          probabilistic: {sampling_percentage: 40}
+        }
+      ]

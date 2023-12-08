@@ -141,19 +141,62 @@ docker run -i --network=foobar-demo_default grafana/k6 run --quiet - <example.js
 
 # 测试的结果和分析
 
-通过执行三个不同的测试case，我们获得了如下的数据
+通过执行三个不同的测试case，我们获得了如下的数据:
 
 | case   | http_req_duration（avg） | CPU usage of Foo（avg） | Memory usage  of Foo（avg） |
 | ------ | ------------------------ | ----------------------- | --------------------------- |
 | case_1 | 18.28ms                  | 7                       | 40.5MB                      |
 | case_2 | 16.27ms                  | 6                       | 41.4MB                      |
-| case_3 |                          |                         |                             |
+| case_3 | 15.43ms                  | 5                       | 25.5MB                      |
 
 结论：
 
-
+1. 使用tail_sampling时，不同的采样率，对服务请求耗时、CPU和内存使用无明显影响。
+2. 服务不接入openTelemetry，请求耗时和内存占用比使用更低。
+3. 服务是否接入openTelemetry，对CPU的占用无明显影响。
 
 
 
 # 部署
 
+代码位于目录 **foobar-demo** 中。
+
+如需启用OpenTelemetry（工程代码中默认不启用），需要去掉下述两个文件所有注释。
+
+```
+services/foo/foo.py
+services/bar/bar.py
+```
+
+
+
+服务部署步骤如下：
+
+1. Build and run services with docker-compose:
+```
+docker-compose up --build -d 
+```
+
+2. See running services with:
+```
+docker-compose ps
+```
+
+3. Generate some load with k6:
+```
+docker run -i --network=foobar-demo_default grafana/k6 run --quiet - <example.js
+```
+
+4. See logs with:
+```
+docker-compose logs foo | grep trace_id
+```
+
+5. Pick a `trace_id` from the logs.
+
+6. Go to Grafana (http://localhost:3000) -> Explore -> Tempo and paste the `trace_id`.
+
+7. Stop the whole setup with:
+```
+docker-compose stop
+```
